@@ -10,6 +10,7 @@ const ESTADOS = {
   anulado: { label: "Anulado", short: "A", color: "b-gray" },
 };
 const TIPO_REALIZACION = ["Taller externo", "Personal propio", "JDM", "Capitán", "Otro"];
+const ERP_URL = "https://erp-portal-fawn.vercel.app";
 
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
@@ -33,15 +34,14 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .ni{display:flex;align-items:center;gap:9px;padding:7px 18px;font-size:12px;font-weight:500;cursor:pointer;color:rgba(255,255,255,.6);border-left:3px solid transparent;transition:all .12s;user-select:none}
 .ni:hover{color:#fff;background:rgba(255,255,255,.06)}
 .ni.active{color:#fff;border-left-color:var(--light);background:rgba(255,255,255,.1);font-weight:600}
+.ni.nueva{background:rgba(35,92,150,.4);color:#fff;border-left-color:#7EB8E8}
+.ni.nueva:hover{background:rgba(35,92,150,.6)}
+.ni.erp{color:rgba(255,255,255,.4)}.ni.erp:hover{color:rgba(255,255,255,.7)}
 .ni-icon{font-size:13px;width:16px;text-align:center;flex-shrink:0}
-.ni-badge{margin-left:auto;background:var(--danger);color:#fff;font-family:var(--mono);font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;min-width:18px;text-align:center}
 .main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
 .topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:13px 28px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 1px 3px rgba(33,51,99,.06)}
 .topbar-title{font-size:12px;font-weight:600;letter-spacing:1px;color:var(--navy);text-transform:uppercase}
 .content{flex:1;overflow-y:auto;padding:24px 28px;background:var(--bg)}
-.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);margin-bottom:16px;box-shadow:0 1px 4px rgba(33,51,99,.06);overflow:hidden}
-.card-body{padding:20px}
-.card-title{font-size:10px;font-weight:600;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between}
 .badge{display:inline-flex;align-items:center;font-family:var(--mono);font-size:9px;font-weight:600;padding:3px 8px;border-radius:4px;white-space:nowrap;letter-spacing:.3px}
 .b-amber{background:#FEF3C7;color:#92400E;border:1px solid #FDE68A}
 .b-blue{background:#DBEAFE;color:#1E40AF;border:1px solid #BFDBFE}
@@ -52,7 +52,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .btn{display:inline-flex;align-items:center;gap:6px;font-family:var(--sans);font-size:11px;font-weight:600;letter-spacing:.3px;padding:7px 14px;border-radius:var(--r);border:1px solid transparent;cursor:pointer;transition:all .15s;white-space:nowrap;text-transform:uppercase}
 .btn-primary{background:var(--blue);color:#fff}.btn-primary:hover{background:var(--navy)}
 .btn-ghost{background:transparent;color:var(--muted);border-color:var(--border)}.btn-ghost:hover{color:var(--text);background:var(--surface2)}
-.btn-success{background:var(--accent2);color:#fff}.btn-success:hover{background:#145E37}
 .btn-sm{padding:4px 10px;font-size:10px}
 .btn:disabled{opacity:.4;cursor:not-allowed}
 .overlay{position:fixed;inset:0;background:rgba(33,51,99,.5);display:flex;align-items:flex-start;justify-content:center;z-index:100;padding:20px;overflow-y:auto;animation:fadeIn .15s}
@@ -107,10 +106,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .flex-between{display:flex;justify-content:space-between;align-items:center}
 .mt8{margin-top:8px}.mt12{margin-top:12px}.mt16{margin-top:16px}
 .mb8{margin-bottom:8px}.mb12{margin-bottom:12px}
-.text-mono{font-family:var(--mono)}
-.item-edit-row{display:grid;grid-template-columns:70px 1fr 100px;gap:8px;margin-bottom:8px;align-items:start}
-.item-edit-input{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:var(--sans);font-size:12px;padding:6px 8px;outline:none;width:100%}
-.item-edit-input:focus{border-color:var(--blue)}
 `;
 
 const fmtDate = d => d ? new Date(d + "T00:00:00").toLocaleDateString("es-AR") : "—";
@@ -129,20 +124,12 @@ const api = {
     if (error) throw error;
     return data;
   },
-  async actualizarSolicitud(id, cambios) {
-    const { error } = await supabase.from("ssrr_solicitudes").update({ ...cambios, updated_at: new Date().toISOString() }).eq("id", id);
-    if (error) throw error;
-  },
   async crearItems(items) {
     const { error } = await supabase.from("ssrr_items").insert(items);
     if (error) throw error;
   },
   async actualizarItem(id, cambios) {
     const { error } = await supabase.from("ssrr_items").update({ ...cambios, updated_at: new Date().toISOString() }).eq("id", id);
-    if (error) throw error;
-  },
-  async eliminarItem(id) {
-    const { error } = await supabase.from("ssrr_items").delete().eq("id", id);
     if (error) throw error;
   },
 };
@@ -166,7 +153,6 @@ function BadgeEstado({ estado }) {
   return <span className={`badge ${e.color}`}>{e.label}</span>;
 }
 
-// ─── MODAL: EDITAR ITEM (Superintendente) ─────────────────────────────────────
 function ItemModal({ item, onClose, onSave }) {
   const [form, setForm] = useState({ ...item });
   const [saving, setSaving] = useState(false);
@@ -228,18 +214,12 @@ function ItemModal({ item, onClose, onSave }) {
   );
 }
 
-// ─── MODAL: NUEVA SSRR ────────────────────────────────────────────────────────
 function NuevaSolicitudModal({ barcoDefault, onClose, onSave, notify }) {
   const [form, setForm] = useState({
     barco: barcoDefault || "Golondrina de Mar",
-    numero: "",
-    fecha_emision: today(),
-    emitido_por: "",
-    observaciones_generales: "",
+    numero: "", fecha_emision: today(), emitido_por: "", observaciones_generales: "",
   });
-  const [items, setItems] = useState([
-    { id: 1, descripcion: "", obs_capitan: "" },
-  ]);
+  const [items, setItems] = useState([{ id: 1, descripcion: "", obs_capitan: "" }]);
   const [saving, setSaving] = useState(false);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
@@ -255,14 +235,13 @@ function NuevaSolicitudModal({ barcoDefault, onClose, onSave, notify }) {
     setSaving(true);
     try {
       const sol = await api.crearSolicitud({ ...form, status: "abierta" });
-      const itemsConId = itemsValidos.map((it, i) => ({
+      await api.crearItems(itemsValidos.map((it, i) => ({
         solicitud_id: sol.id,
         numero_item: `${form.numero}-${i + 1}`,
         descripcion: it.descripcion,
         obs_capitan: it.obs_capitan || null,
         estado: "pendiente",
-      }));
-      await api.crearItems(itemsConId);
+      })));
       notify("SSRR creada correctamente", "success");
       onSave();
     } catch (e) { alert("Error: " + e.message); }
@@ -295,7 +274,7 @@ function NuevaSolicitudModal({ barcoDefault, onClose, onSave, notify }) {
             <input value={form.emitido_por} onChange={e => set("emitido_por", e.target.value)} placeholder="Nombre del responsable" />
           </FG>
           <FG label="Observaciones generales" full>
-            <textarea value={form.observaciones_generales} onChange={e => set("observaciones_generales", e.target.value)} placeholder="Observaciones generales de la solicitud..." style={{ marginTop: 8 }} />
+            <textarea value={form.observaciones_generales} onChange={e => set("observaciones_generales", e.target.value)} placeholder="Observaciones generales..." style={{ marginTop: 8 }} />
           </FG>
 
           <div className="form-section">Ítems a reparar</div>
@@ -319,7 +298,6 @@ function NuevaSolicitudModal({ barcoDefault, onClose, onSave, notify }) {
               </div>
             </div>
           ))}
-
           <button className="btn btn-ghost btn-sm mt8" onClick={addItem}>+ Agregar ítem</button>
         </div>
         <div className="mftr">
@@ -331,8 +309,7 @@ function NuevaSolicitudModal({ barcoDefault, onClose, onSave, notify }) {
   );
 }
 
-// ─── SSRR CARD ────────────────────────────────────────────────────────────────
-function SolicitudCard({ sol, onItemClick, onEdit }) {
+function SolicitudCard({ sol, onItemClick }) {
   const [expanded, setExpanded] = useState(true);
   const items = sol.ssrr_items || [];
   const pendientes = items.filter(it => it.estado === "pendiente").length;
@@ -365,28 +342,29 @@ function SolicitudCard({ sol, onItemClick, onEdit }) {
                 <th style={{ width: 110 }}>Estado</th>
                 <th style={{ width: 130 }}>Obs. Capitán</th>
                 <th style={{ width: 150 }}>Obs. Superintendente</th>
-                <th style={{ width: 100 }}>Quién realizó</th>
+                <th style={{ width: 120 }}>Quién realizó</th>
                 <th style={{ width: 90 }}>Fecha real.</th>
                 <th style={{ width: 90 }}>N° Remito</th>
               </tr>
             </thead>
             <tbody>
-              {items.length === 0 ? (
-                <tr><td colSpan={8} style={{ textAlign: "center", padding: 20, color: "var(--muted2)" }}>Sin ítems</td></tr>
-              ) : items.map(it => (
-                <tr key={it.id} onClick={() => onItemClick(it)}>
-                  <td className="item-num-cell">{it.numero_item}</td>
-                  <td className="item-desc-cell">{it.descripcion}</td>
-                  <td><BadgeEstado estado={it.estado} /></td>
-                  <td className="item-obs-cell">{it.obs_capitan || "—"}</td>
-                  <td className="item-obs-cell">{it.obs_superintendente || "—"}</td>
-                  <td style={{ fontSize: 10, color: "var(--muted)" }}>
-                    {it.realizado_por ? `${it.realizado_por}${it.tipo_realizacion ? ` (${it.tipo_realizacion})` : ""}` : "—"}
-                  </td>
-                  <td style={{ fontSize: 10, color: "var(--muted)", fontFamily: "var(--mono)" }}>{fmtDate(it.fecha_realizacion)}</td>
-                  <td className="item-remito">{it.nro_remito || "—"}</td>
-                </tr>
-              ))}
+              {items.length === 0
+                ? <tr><td colSpan={8} style={{ textAlign: "center", padding: 20, color: "var(--muted2)" }}>Sin ítems</td></tr>
+                : items.map(it => (
+                  <tr key={it.id} onClick={() => onItemClick(it)}>
+                    <td className="item-num-cell">{it.numero_item}</td>
+                    <td className="item-desc-cell">{it.descripcion}</td>
+                    <td><BadgeEstado estado={it.estado} /></td>
+                    <td className="item-obs-cell">{it.obs_capitan || "—"}</td>
+                    <td className="item-obs-cell">{it.obs_superintendente || "—"}</td>
+                    <td style={{ fontSize: 10, color: "var(--muted)" }}>
+                      {it.realizado_por ? `${it.realizado_por}${it.tipo_realizacion ? ` (${it.tipo_realizacion})` : ""}` : "—"}
+                    </td>
+                    <td style={{ fontSize: 10, color: "var(--muted)", fontFamily: "var(--mono)" }}>{fmtDate(it.fecha_realizacion)}</td>
+                    <td className="item-remito">{it.nro_remito || "—"}</td>
+                  </tr>
+                ))
+              }
             </tbody>
           </table>
         </div>
@@ -395,12 +373,10 @@ function SolicitudCard({ sol, onItemClick, onEdit }) {
   );
 }
 
-// ─── PAGE: PANEL ──────────────────────────────────────────────────────────────
-function PagePanel({ barco, notify }) {
+function PagePanel({ barco, onNuevaSolicitud, notify }) {
   const [solicitudes, setSolicitudes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [itemModal, setItemModal] = useState(null);
-  const [nuevaModal, setNuevaModal] = useState(false);
   const [filtroEstado, setFiltroEstado] = useState("");
   const [busqueda, setBusqueda] = useState("");
 
@@ -426,9 +402,7 @@ function PagePanel({ barco, notify }) {
     if (filtroEstado && !items.some(it => it.estado === filtroEstado)) return false;
     if (busqueda) {
       const q = busqueda.toLowerCase();
-      const enDesc = items.some(it => it.descripcion?.toLowerCase().includes(q));
-      const enNum = sol.numero?.toLowerCase().includes(q);
-      if (!enDesc && !enNum) return false;
+      if (!items.some(it => it.descripcion?.toLowerCase().includes(q)) && !sol.numero?.toLowerCase().includes(q)) return false;
     }
     return true;
   });
@@ -451,18 +425,12 @@ function PagePanel({ barco, notify }) {
         </select>
         {(filtroEstado || busqueda) && <button className="btn btn-ghost btn-sm" onClick={() => { setFiltroEstado(""); setBusqueda(""); }}>✕ Limpiar</button>}
         <span style={{ marginLeft: "auto", fontFamily: "var(--mono)", fontSize: 11, color: "var(--muted)" }}>{solFiltradas.length} solicitudes</span>
-        <button className="btn btn-primary btn-sm" onClick={() => setNuevaModal(true)}>+ Nueva SSRR</button>
       </div>
 
       {loading ? <div className="loading"><span className="spin">◌</span> Cargando...</div> :
-        solFiltradas.length === 0 ? <div className="empty-state"><div style={{ fontSize: 28, marginBottom: 8 }}>🔧</div>Sin solicitudes</div> :
+        solFiltradas.length === 0 ? <div className="empty-state"><div style={{ fontSize: 28, marginBottom: 8 }}>🔧</div>Sin solicitudes registradas</div> :
         solFiltradas.map(sol => (
-          <SolicitudCard
-            key={sol.id}
-            sol={sol}
-            onItemClick={setItemModal}
-            onEdit={() => {}}
-          />
+          <SolicitudCard key={sol.id} sol={sol} onItemClick={setItemModal} />
         ))
       }
 
@@ -473,40 +441,20 @@ function PagePanel({ barco, notify }) {
           onSave={() => { setItemModal(null); notify("Ítem actualizado", "success"); load(); }}
         />
       )}
-
-      {nuevaModal && (
-        <NuevaSolicitudModal
-          barcoDefault={barco}
-          onClose={() => setNuevaModal(false)}
-          onSave={() => { setNuevaModal(false); load(); }}
-          notify={notify}
-        />
-      )}
     </div>
   );
 }
 
-// ─── ROOT APP ─────────────────────────────────────────────────────────────────
 export default function App() {
   const [barco, setBarco] = useState("Golondrina de Mar");
-  const [page, setPage] = useState("panel");
   const [notif, setNotif] = useState(null);
+  const [nuevaModal, setNuevaModal] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const notify = useCallback((text, type = "info") => {
     setNotif({ text, type });
     setTimeout(() => setNotif(null), 4000);
   }, []);
-
-  const NI = ({ id, icon, label }) => (
-    <div className={`ni ${page === id ? "active" : ""}`} onClick={() => setPage(id)}>
-      <span className="ni-icon">{icon}</span>
-      <span>{label}</span>
-    </div>
-  );
-
-  const pageTitles = {
-    panel: `${barco} — Panel de control`,
-  };
 
   return (
     <>
@@ -522,6 +470,7 @@ export default function App() {
               </div>
             </div>
           </div>
+
           <div className="nav-section">Barcos</div>
           {BARCOS.map(b => (
             <div key={b} className={`ni ${barco === b ? "active" : ""}`} onClick={() => setBarco(b)}>
@@ -529,26 +478,56 @@ export default function App() {
               <span style={{ fontSize: 11 }}>{b}</span>
             </div>
           ))}
-          <div className="nav-section">Vistas</div>
-          <NI id="panel" icon="▦" label="Panel de control" />
+
+          <div className="nav-section">Acciones</div>
+          <div className="ni nueva" onClick={() => setNuevaModal(true)}>
+            <span className="ni-icon">+</span>
+            <span>Nueva SSRR</span>
+          </div>
+          <div className="ni active">
+            <span className="ni-icon">▦</span>
+            <span>Panel de control</span>
+          </div>
+
           <div style={{ flex: 1 }} />
-          <div style={{ padding: "14px 18px", borderTop: "1px solid rgba(255,255,255,.1)" }}>
-            <div style={{ fontSize: 9, color: "rgba(255,255,255,.3)", fontFamily: "var(--mono)", letterSpacing: 1 }}>SSRR v1.0</div>
+
+          <div style={{ padding: "12px 18px", borderTop: "1px solid rgba(255,255,255,.1)" }}>
+            <div className="ni erp" style={{ padding: "6px 0", borderLeft: "none" }}
+              onClick={() => window.open(ERP_URL, "_self")}>
+              <span className="ni-icon" style={{ fontSize: 11 }}>←</span>
+              <span style={{ fontSize: 11 }}>Volver al ERP</span>
+            </div>
+            <div style={{ fontSize: 9, color: "rgba(255,255,255,.25)", fontFamily: "var(--mono)", letterSpacing: 1, marginTop: 8 }}>SSRR v1.0</div>
           </div>
         </nav>
+
         <div className="main">
           <div className="topbar">
-            <div className="topbar-title">{pageTitles[page] || page}</div>
+            <div className="topbar-title">{barco} — Panel de control</div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#DBEAFE", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: "var(--blue)", fontWeight: 700 }}>ST</div>
               <span style={{ fontSize: 12, color: "var(--muted)", fontWeight: 500 }}>Superintendente</span>
             </div>
           </div>
           <div className="content">
-            {page === "panel" && <PagePanel barco={barco} notify={notify} />}
+            <PagePanel
+              key={`${barco}-${refreshKey}`}
+              barco={barco}
+              notify={notify}
+            />
           </div>
         </div>
       </div>
+
+      {nuevaModal && (
+        <NuevaSolicitudModal
+          barcoDefault={barco}
+          onClose={() => setNuevaModal(false)}
+          onSave={() => { setNuevaModal(false); setRefreshKey(k => k + 1); }}
+          notify={notify}
+        />
+      )}
+
       <Notif msg={notif} onClose={() => setNotif(null)} />
     </>
   );
